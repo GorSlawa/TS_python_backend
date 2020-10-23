@@ -1,0 +1,174 @@
+import os
+import unittest
+from unittest.mock import patch
+
+
+class FieldRangeError(Exception):
+    pass
+
+
+class NotEmptyFieldError(Exception):
+    pass
+
+
+class TicTacTest(unittest.TestCase):
+    def setUp(self):
+        self.game_obj = TicTacGame()
+        self.game_obj.cur_state = -1
+        self.game_obj.turn = 0
+        self.game_obj.field = [[0] * 3 for i in range(3)]
+
+    @patch('builtins.input', return_value='1 1')
+    def test_correct_input(self, _input):
+        i, j = self.game_obj.get_input()
+        self.assertEqual(i, 0)
+        self.assertEqual(j, 0)
+
+    @patch('builtins.input', return_value='qwe 1')
+    def test_wrong_format_input(self, _input):
+        self.assertRaises(ValueError, self.game_obj.get_input)
+
+    @patch('builtins.input', return_value='-1 1')
+    def test_range_error_input(self, _input):
+        self.assertRaises(FieldRangeError, self.game_obj.get_input)
+
+    @patch('builtins.input', side_effect=['1 1', '1 1'])
+    def test_not_empty_input(self, _input):
+        self.game_obj.make_turn()
+        self.assertRaises(NotEmptyFieldError, self.game_obj.get_input)
+
+    def test_not_finished(self):
+        self.game_obj.field[1][1] = 1
+        self.game_obj.field[2][2] = 2
+        self.game_obj.field[0][1] = 1
+        self.game_obj.check_finished()
+        self.assertEqual(self.game_obj.cur_state, -1)
+
+    def test_tic_finished(self):
+        for i in range(3):
+            self.game_obj.field[i][i] = 1
+        self.game_obj.check_finished()
+        self.assertEqual(self.game_obj.cur_state, 1)
+
+    def test_tac_finished(self):
+        for i in range(3):
+            self.game_obj.field[i][i] = 2
+        self.game_obj.check_finished()
+        self.assertEqual(self.game_obj.cur_state, 2)
+
+    def test_tie_finished(self):
+        tic_tac = 0
+        turns = [(2, 2), (1, 1), (1, 3), (3, 1), (2, 1), (2, 3), (1, 2), (3, 2), (3, 3)]
+        for turn in turns:
+            self.game_obj.field[turn[0] - 1][turn[1] - 1] = tic_tac + 1
+            tic_tac = (tic_tac + 1) % 2
+        self.game_obj.check_finished()
+        self.assertEqual(self.game_obj.cur_state, 0)
+
+    @patch('builtins.input',
+           side_effect=['2 2', '1 1', '1 3', '3 1', '2 1', '2 3', '1 2', '3 2', '3 3'])
+    def test_full_game(self, _input):
+        self.game_obj.start_game()
+        self.assertEqual(self.game_obj.cur_state, 0)
+
+
+class TicTacGame:
+    _TEAMS = ('крестики', 'нолики')
+
+    def __init__(self):
+        self.field = None
+        self.turn = None
+        self.cur_state = None
+
+    def check_finished(self):
+        if self.field[0][0] == self.field[1][1] == self.field[2][2] != 0:
+            self.cur_state = self.field[0][0]
+            return
+
+        if self.field[0][2] == self.field[1][1] == self.field[2][0] != 0:
+            self.cur_state = self.field[2][0]
+            return
+
+        for i in range(3):
+            if self.field[i][0] == self.field[i][1] == self.field[i][2] != 0:
+                self.cur_state = self.field[i][0]
+                return
+            if self.field[0][i] == self.field[1][i] == self.field[2][i] != 0:
+                self.cur_state = self.field[0][i]
+                return
+
+        for i in range(3):
+            for j in range(3):
+                if self.field[i][j] == 0:
+                    return
+        self.cur_state = 0
+
+    def get_input(self, error_message=''):
+        _input = input(f'{error_message}Введите два целых числа от 1 до 3 через пробел: ')
+        i, j = tuple(map(lambda x: int(x) - 1, _input.split(' ')))
+        if not 0 <= i <= 2 or not 0 <= j <= 2:
+            raise FieldRangeError
+        if self.field[i][j] != 0:
+            raise NotEmptyFieldError
+        return i, j
+
+    def make_turn(self):
+        error = ''
+        i, j = None, None
+        while error is not None:
+            try:
+                i, j = self.get_input(error)
+            except ValueError:
+                error = 'Неправильный формат ввода // '
+            except FieldRangeError:
+                error = 'Значения не попали в необходимый диапозон // '
+            except NotEmptyFieldError:
+                error = 'Данное поле уже занято // '
+            else:
+                error = None
+
+        if self.turn == 0:
+            self.field[i][j] = 1
+            self.turn = 1
+        elif self.turn == 1:
+            self.field[i][j] = 2
+            self.turn = 0
+        self.check_finished()
+
+    def print_field(self):
+        for i in range(3):
+            for j in range(3):
+                if self.field[i][j] == 0:
+                    print('_', end='')
+                elif self.field[i][j] == 1:
+                    print('X',end='')
+                elif self.field[i][j] == 2:
+                    print('O', end='')
+            print()
+
+    def print_game_state(self):
+        os.system('clear')
+        if self.cur_state == -1:
+            print(f'Игра продожается. {self._TEAMS[self.turn].capitalize()} ходят.')
+        elif self.cur_state == 0:
+            print('Игра закончилась ничьей.')
+        elif self.cur_state == 1:
+            print('Игра закончилась победой крестиков.')
+        elif self.cur_state == 2:
+            print('Игра закончилась победой ноликов.')
+        print()
+        self.print_field()
+
+    def start_game(self):
+        self.cur_state = -1
+        self.turn = 0
+        self.field = [[0] * 3 for i in range(3)]
+        self.print_game_state()
+        while self.cur_state == -1:
+            self.make_turn()
+            self.print_game_state()
+
+
+if __name__ == '__main__':
+    game = TicTacGame()
+    game.start_game()
