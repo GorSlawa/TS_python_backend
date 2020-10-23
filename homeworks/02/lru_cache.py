@@ -3,35 +3,35 @@ import unittest
 
 class LRUCacheTest(unittest.TestCase):
     def test_common(self):
-        self.cache = LRUCache(100)
-        self.cache.set('Jesse', 'Pinkman')
-        self.cache.set('Walter', 'White')
-        self.cache.set('Jesse', 'James')
-        value = self.cache.get('Jesse')  # вернёт 'James'
+        cache = LRUCache(100)
+        cache.set('Jesse', 'Pinkman')
+        cache.set('Walter', 'White')
+        cache.set('Jesse', 'James')
+        value = cache.get('Jesse')  # вернёт 'James'
         self.assertEqual(value, 'James')
-        self.cache.delete('Walter')
-        value = self.cache.get('Walter')  # вернёт ''
+        cache.delete('Walter')
+        value = cache.get('Walter')  # вернёт ''
         self.assertEqual(value, '')
-        self.assertEqual(self.cache.length, 1)
+        self.assertEqual(cache.length, 1)
 
     def test_small_cache_01(self):
-        self.cache = LRUCache(0)
-        self.cache.set('Jesse', 'Pinkman')
-        self.cache.set('Walter', 'White')
-        value = self.cache.get('Jesse')
+        cache = LRUCache(0)
+        cache.set('Jesse', 'Pinkman')
+        cache.set('Walter', 'White')
+        value = cache.get('Jesse')
         self.assertEqual(value, '')
-        self.assertEqual(self.cache.length, 0)
+        self.assertEqual(cache.length, 0)
 
     def test_small_cache_02(self):
-        self.cache = LRUCache(1)
-        self.cache.set('Jesse', 'Pinkman')
-        self.cache.set('Walter', 'White')
-        self.cache.set('Walter', 'Black')
-        value = self.cache.get('Jesse')
+        cache = LRUCache(1)
+        cache.set('Jesse', 'Pinkman')
+        cache.set('Walter', 'White')
+        cache.set('Walter', 'Black')
+        value = cache.get('Jesse')
         self.assertEqual(value, '')
-        value = self.cache.get('Walter')
+        value = cache.get('Walter')
         self.assertEqual(value, 'Black')
-        self.assertEqual(self.cache.length, 1)
+        self.assertEqual(cache.length, 1)
 
 
 class Node:
@@ -53,11 +53,10 @@ class LRUCache:
     def get(self, key):
         if key not in self.lru_map:
             return ''
-        else:
-            node = self.lru_map[key]
-            self._delete_from_list(node)
-            self._add_to_head(node)
-            return node.value
+        node = self.lru_map[key]
+        self._delete_from_list(node)
+        self._add_to_head(node)
+        return node.value
 
     def set(self, key, value):
         if key not in self.lru_map:
