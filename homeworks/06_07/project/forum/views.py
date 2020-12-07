@@ -1,15 +1,39 @@
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
-from .models import Message, User
+from .models import Message
 
 from collections import deque
 
 
+def my_login_required(func):
+    def wrapper(*args, **kwargs):
+        if not args[0].user.is_authenticated:
+            return Response('Unauthorized', 401)
+        else:
+            return func(*args, **kwargs)
+    return wrapper
+
+
+def login(request):
+    return render(request, 'login.html')
+
+
+@my_login_required
+def home(request):
+    return render(request, 'home.html')
+
+
 @api_view(['GET', 'PUT'])
+@my_login_required
 def handle_all_forum(request):
+    print('======')
+    print(request.user)
+    print('======')
     if request.method == 'GET':
         return get_all_forum()
     elif request.method == 'PUT':
@@ -17,6 +41,7 @@ def handle_all_forum(request):
 
 
 @api_view(['GET', 'PUT', 'POST', 'DELETE'])
+@my_login_required
 def handle_one_message(request, id_):
     if request.method == 'GET':
         return get_message(id_)
@@ -35,7 +60,7 @@ def get_all_forum():
     for cur in Message.objects.filter(reply=None):
         cur_dict = {
             'id': cur.id,
-            'username': User.objects.get(id=cur.user_id.id).name,
+            'username': cur.user.username,
             'text': cur.text,
             'replies': []
         }
@@ -48,7 +73,7 @@ def get_all_forum():
         cur = d.popleft()
         cur_dict = {
             'id': cur.id,
-            'username': User.objects.get(id=cur.user_id.id).name,
+            'username': cur.user.username,
             'text': cur.text,
             'replies': []
         }
@@ -70,7 +95,7 @@ def get_message(id_):
         return Response(res, status=404)
     forum = {
         'id': root.id,
-        'username': User.objects.get(id=root.user_id.id).name,
+        'username': root.user.username,
         'text': root.text,
         'replies': []
     }
@@ -82,7 +107,7 @@ def get_message(id_):
         cur = d.popleft()
         cur_dict = {
             'id': cur.id,
-            'username': User.objects.get(id=cur.user_id.id).name,
+            'username': cur.user.username,
             'text': cur.text,
             'replies': []
         }
@@ -95,13 +120,13 @@ def get_message(id_):
 
 
 def put_root_message(request):
-    try:
-        User.objects.get(name=request.data['username'])
-    except User.DoesNotExist:
-        t = User(name=request.data['username'])
-        t.save()
+    # try:
+    #     CustomUser.objects.get(name=request.data['username'])
+    # except CustomUser.DoesNotExist:
+    #     t = CustomUser(name=request.data['username'])
+    #     t.save()
     new_message = Message(
-        user_id=User.objects.get(name=request.data['username']),
+        user=request.user,
         text=request.data['text'],
         reply=None
     )
@@ -115,13 +140,13 @@ def put_message(request, id_):
     except Message.DoesNotExist:
         res = f'Message does not exist id={id_}'
         return Response(res, status=404)
-    try:
-        User.objects.get(name=request.data['username'])
-    except User.DoesNotExist:
-        t = User(name=request.data['username'])
-        t.save()
+    # try:
+    #     CustomUser.objects.get(name=request.data['username'])
+    # except CustomUser.DoesNotExist:
+    #     t = CustomUser(name=request.data['username'])
+    #     t.save()
     new_message = Message(
-        user_id=User.objects.get(name=request.data['username']),
+        user=request.user,
         text=request.data['text'],
         reply=id_
     )
